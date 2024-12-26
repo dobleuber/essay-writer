@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use essay_writer::{
-    agent::{Agent, PlanAgent},
+    agent::{Agent, PlanAgent, ResearchAgent},
     state::AgentState,
 };
 use tokio::sync::RwLock;
@@ -11,13 +11,19 @@ async fn main() {
     dotenv::dotenv().ok();
 
     let state = Arc::new(RwLock::new(AgentState::new(
-        "what is the difference between langchain and langsmith".to_string(),
+        "What is the impact of global warming?".to_string(),
         3,
     )));
-    let agent = PlanAgent::init(state.clone());
-    let response = agent.execute().await;
+    let planner = PlanAgent::init(state.clone());
+    let plan = planner.execute().await;
+    let researcher = ResearchAgent::init(state.clone());
+    let research = researcher.execute().await;
     println!("Response:");
     println!();
-    println!("{}", response);
+    println!("{}", plan);
+
+    println!("Research:");
+    println!();
+    println!("{}", research);
     dbg!(state);
 }

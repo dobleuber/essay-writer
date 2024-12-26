@@ -727,6 +727,7 @@ dependencies = [
  "anyhow",
  "async-openai 0.26.0",
  "dotenv",
+ "futures",
  "langchain",
  "langchain-rust",
  "nom",

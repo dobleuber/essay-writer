@@ -2,6 +2,8 @@
 pub struct AgentState {
     pub task: String,
     pub plan: Option<String>,
+    pub queries: Option<Vec<String>>,
+    pub research: Option<Vec<String>>,
     pub draft: Option<String>,
     pub critique: Option<String>,
     pub content: Option<String>,
@@ -14,6 +16,8 @@ impl AgentState {
         AgentState {
             task: task,
             plan: None,
+            queries: None,
+            research: None,
             draft: None,
             critique: None,
             content: None,
