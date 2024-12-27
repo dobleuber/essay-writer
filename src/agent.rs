@@ -1,9 +1,8 @@
-use anyhow::Result;
 use futures::stream::{self, StreamExt};
 use langchain_rust::{
     chain::{Chain, LLMChain, LLMChainBuilder},
     fmt_message, fmt_template,
-    llm::openai::{OpenAI, OpenAIConfig, OpenAIModel},
+    llm::openai::{OpenAI, OpenAIModel},
     message_formatter,
     prompt::HumanMessagePromptTemplate,
     prompt_args,
@@ -16,7 +15,10 @@ use tavily::Tavily;
 use tokio::sync::RwLock;
 
 use super::state::AgentState;
-use crate::prompts::{PLAN_PROMPT, RESEARCH_CRITIQUE_PROMPT, RESEARCH_PLAN_PROMPT};
+use crate::prompts::{
+    PLAN_PROMPT, REFLECTION_INPUT_PROMPT, REFLECTION_PROMPT, RESEARCH_PLAN_PROMPT,
+    WRITER_INPUT_PROMPT, WRITER_PROMPT,
+};
 
 type State = Arc<RwLock<AgentState>>;
 
@@ -149,5 +151,106 @@ impl Agent for ResearchAgent {
         state.research = Some(research.clone());
 
         research.join("\n").to_string()
+    }
+}
+
+pub struct WriterAgent {
+    chain: LLMChain,
+    state: State,
+}
+
+impl Agent for WriterAgent {
+    fn init(state: Arc<RwLock<AgentState>>) -> Self {
+        let llm = OpenAI::default().with_model(OpenAIModel::Gpt4);
+        let prompt = message_formatter![
+            fmt_message!(Message::new_system_message(WRITER_PROMPT)),
+            fmt_template!(HumanMessagePromptTemplate::new(template_fstring!(
+                WRITER_INPUT_PROMPT,
+                "topic",
+                "plan",
+                "research",
+                "critique",
+                "draft",
+                "references"
+            ))),
+        ];
+
+        let chain = LLMChainBuilder::new()
+            .prompt(prompt)
+            .llm(llm)
+            .build()
+            .expect("Failed to create chain");
+
+        Self {
+            chain,
+            state: state.clone(),
+        }
+    }
+
+    async fn execute(&self) -> String {
+        let draft = {
+            let state = self.state.read().await;
+            let input_variables = prompt_args! {
+                "topic" => state.task.clone(),
+                "plan" => state.plan.clone().expect("Plan not found"),
+                "research" => state.research.clone().expect("Research not found"),
+                "critique" => state.critique.clone(),
+                "draft" => state.draft.clone(),
+                "references" => state.queries.clone()
+            };
+            let queries = self.chain.invoke(input_variables).await;
+            queries.expect("Failed to generate draft")
+        };
+
+        let mut state = self.state.write().await;
+        state.draft = Some(draft.clone());
+        draft
+    }
+}
+
+pub struct CritiqueAgent {
+    chain: LLMChain,
+    state: State,
+}
+
+impl Agent for CritiqueAgent {
+    fn init(state: Arc<RwLock<AgentState>>) -> Self {
+        let llm = OpenAI::default().with_model(OpenAIModel::Gpt4);
+        let prompt = message_formatter![
+            fmt_message!(Message::new_system_message(REFLECTION_PROMPT)),
+            fmt_template!(HumanMessagePromptTemplate::new(template_fstring!(
+                REFLECTION_INPUT_PROMPT,
+                "topic",
+                "plan",
+                "draft",
+            ))),
+        ];
+
+        let chain = LLMChainBuilder::new()
+            .prompt(prompt)
+            .llm(llm)
+            .build()
+            .expect("Failed to create chain");
+
+        Self {
+            chain,
+            state: state.clone(),
+        }
+    }
+
+    async fn execute(&self) -> String {
+        let critique = {
+            let state = self.state.read().await;
+            let input_variables = prompt_args! {
+                "topic" => state.task.clone(),
+                "plan" => state.plan.clone().expect("Plan not found"),
+                "draft" => state.draft.clone(),
+            };
+            let critique = self.chain.invoke(input_variables).await;
+            critique.expect("Failed to get critique")
+        };
+        let mut state = self.state.write().await;
+        state.critique = Some(critique.clone());
+        critique
     }
 }

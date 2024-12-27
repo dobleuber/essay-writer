@@ -21,7 +21,7 @@ impl AgentState {
             draft: None,
             critique: None,
             content: None,
-            revision_number: 0,
+            revision_number: max_revisions,
             max_revisions,
         }
     }
