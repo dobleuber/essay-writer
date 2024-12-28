@@ -36,7 +36,7 @@ pub struct PlanAgent {
 
 impl Agent for PlanAgent {
     fn init(state: Arc<RwLock<AgentState>>) -> Self {
-        let llm = OpenAI::default().with_model(OpenAIModel::Gpt4);
+        let llm = OpenAI::default().with_model(OpenAIModel::Gpt4oMini);
         let prompt = message_formatter![
             fmt_message!(Message::new_system_message(PLAN_PROMPT)),
             fmt_template!(HumanMessagePromptTemplate::new(template_fstring!(
@@ -142,15 +142,22 @@ impl Agent for ResearchAgent {
                     .unwrap()
                     .results
                     .into_iter()
-                    .map(|result| result.content)
+                    .map(|result| (result.content, result.url))
             })
-            .collect::<Vec<String>>();
+            .collect::<Vec<(String, String)>>();
 
         let mut state = self.state.write().await;
         state.queries = Some(queries.clone());
-        state.research = Some(research.clone());
+        let research_result: Vec<String> = research
+            .iter()
+            .map(|(content, _)| content)
+            .cloned()
+            .collect();
+        state.research = Some(research_result.clone());
 
-        research.join("\n").to_string()
+        state.urls = Some(research.iter().map(|(_, url)| url).cloned().collect());
+
+        research_result.join("\n")
     }
 }
 
@@ -196,7 +203,7 @@ impl Agent for WriterAgent {
                 "research" => state.research.clone().expect("Research not found"),
                 "critique" => state.critique.clone(),
                 "draft" => state.draft.clone(),
-                "references" => state.queries.clone()
+                "references" => state.urls.clone()
             };
             let queries = self.chain.invoke(input_variables).await;
             queries.expect("Failed to generate draft")

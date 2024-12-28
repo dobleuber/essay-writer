@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use essay_writer::{
     agent::{Agent, CritiqueAgent, PlanAgent, ResearchAgent, WriterAgent},
+    io_utils::get_user_input,
     state::AgentState,
 };
 use tokio::sync::RwLock;
@@ -10,10 +11,13 @@ use tokio::sync::RwLock;
 async fn main() {
     dotenv::dotenv().ok();
 
-    let state = Arc::new(RwLock::new(AgentState::new(
-        "What is the impact of global warming?".to_string(),
-        2,
-    )));
+    println!("Essay Writer");
+    println!();
+    println!("Enter the topic of your essay:");
+    let topic = get_user_input();
+    println!();
+
+    let state = Arc::new(RwLock::new(AgentState::new(topic, 2)));
 
     let revisions = { state.read().await.revision_number };
 

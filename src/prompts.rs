@@ -7,6 +7,8 @@ pub static WRITER_PROMPT: &str =
 Generate the best essay possible for the user's request and the initial outline. \
 If the user provides critique, respond with a revised version of your previous attempts. \
 Utilize all the information below as needed.
+If references are provided, include the full url too.
+Use Markdown formatting.
 ";
 
 pub static WRITER_INPUT_PROMPT: &str = "
