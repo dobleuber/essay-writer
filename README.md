@@ -20,7 +20,12 @@ An intelligent essay writing assistant powered by AI agents that help with resea
 ## Installation
 
 1. Clone the repository
-2. Create a `.env` file with the following environment variables:
+2. Create a `.env` file with your environment variables. You can use `.env.example` as a template:
+   ```
+   # Copy .env.example to .env and fill in your API keys
+   cp .env.example .env
+   ```
+   Required environment variables:
    ```
    OPENAI_API_KEY=your_openai_api_key
    TAVILY_API_KEY=your_tavily_api_key
